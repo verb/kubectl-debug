@@ -1,0 +1,12 @@
+steps:
+- name: 'golang'
+  args: ['go', 'build', 'cmd/kubectl-debug.go']
+  env: ['GO111MODULE=on']
+- name: 'alpine'
+  args: ['tar', 'zcf', 'kubectl-debug.tar.gz', 'kubectl-debug']
+substitutions:
+  _ARTIFACT_PATH: 'kubectl-debug'
+artifacts:
+  objects:
+    location: 'gs://$PROJECT_ID/${_ARTIFACT_PATH}/'
+    paths: ['kubectl-debug', 'kubectl-debug.tar.gz']
