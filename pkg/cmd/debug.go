@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -34,7 +35,12 @@ import (
 
 var (
 	debugExample = `
-	TODO
+	# Create a debugging container in pod mypod using defaults (a busybox image named "debugger")
+	# and immediately attach to it using "kubectl attach".
+	%[1]s debug mypod --attach
+
+	# Create a debugging container in pod mypod using a custom debugging tools image and name.
+	%[1]s debug -m gcr.io/verb-images/debug-tools -c debug-tools mypod
 `
 
 	errNoContext = fmt.Errorf("no context is currently set, use %q to select a new one", "kubectl config use-context <context>")
@@ -88,7 +94,7 @@ func NewCmdDebug(streams genericclioptions.IOStreams) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&o.attach, "attach", false, "Attach to container after creation.")
+	cmd.Flags().BoolVar(&o.attach, "attach", false, "Exec `kubectl attach` to attach to container after creation.")
 	cmd.Flags().StringVarP(&o.debugContainer.Name, "container", "c", "debugger", "Container name. If omitted, a default will be chosen.")
 	cmd.Flags().StringVarP(&o.debugContainer.Image, "image", "m", "busybox", "Container image.")
 	cmd.Flags().BoolVarP(&o.debugContainer.Stdin, "stdin", "i", true, "stdin")
