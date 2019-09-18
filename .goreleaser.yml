@@ -1,0 +1,27 @@
+project_name: kubectl-debug
+release:
+  github:
+    owner: verb
+    name: kubectl-debug
+builds:
+  - id: kubectl-debug
+    goos:
+    - linux
+    - windows
+    - darwin
+    goarch:
+    - amd64
+    - "386"
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    main: cmd/kubectl-debug.go
+    ldflags: -s -w
+archives:
+  - id: kubectl-debug
+    builds:
+    - kubectl-debug
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+    - goos: windows
+      format: zip
