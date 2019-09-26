@@ -18,6 +18,8 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/pflag"
 
@@ -29,7 +31,13 @@ func main() {
 	flags := pflag.NewFlagSet("kubectl-debug", pflag.ExitOnError)
 	pflag.CommandLine = flags
 
-	root := cmd.NewCmdDebug(genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr})
+	_, calledAs := filepath.Split(os.Args[0])
+	if strings.HasPrefix(calledAs, "kubectl-") {
+		calledAs = strings.Replace(calledAs, "kubectl-", "kubectl ", 1)
+		calledAs = strings.ReplaceAll(calledAs, "_", "-")
+	}
+
+	root := cmd.NewCmdDebug(calledAs, genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr})
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}

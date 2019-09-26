@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -33,17 +34,21 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var (
+const (
 	debugExample = `
 	# Create a debugging container in pod mypod using defaults (a busybox image named "debugger")
 	# and immediately attach to it using "kubectl attach".
-	%[1]s debug mypod --attach
+	%[1]s mypod --attach
 
 	# Create a debugging container in pod mypod using a custom debugging tools image and name.
-	%[1]s debug -m gcr.io/verb-images/debug-tools -c debug-tools mypod
+	%[1]s -m gcr.io/verb-images/debug-tools -c debug-tools mypod
+
+	# Note that %[1]s requires requires the EphemeralContainers feature to be enabled in the cluster.
+	# While this feature is in alpha it is not enabled by default.
+	# See https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/ for enabling features.
 `
 
-	errNoContext = fmt.Errorf("no context is currently set, use %q to select a new one", "kubectl config use-context <context>")
+	errDisabled = "ephemeral containers are disabled for this cluster (\"%s\"). See --help for additional information."
 )
 
 // DebugOptions provides information required to update
@@ -61,23 +66,17 @@ type DebugOptions struct {
 	genericclioptions.IOStreams
 }
 
-// NewDebugOptions provides an instance of DebugOptions with default values
-func NewDebugOptions(streams genericclioptions.IOStreams) *DebugOptions {
-	return &DebugOptions{
-		configFlags: genericclioptions.NewConfigFlags(true),
-
-		IOStreams: streams,
-	}
-}
-
 // NewCmdDebug provides a cobra command wrapping DebugOptions
-func NewCmdDebug(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewDebugOptions(streams)
+func NewCmdDebug(calledAs string, streams genericclioptions.IOStreams) *cobra.Command {
+	o := &DebugOptions{
+		configFlags: genericclioptions.NewConfigFlags(true),
+		IOStreams:   streams,
+	}
 
 	cmd := &cobra.Command{
-		Use:          "debug [pod] [flags]",
+		Use:          fmt.Sprintf("%s [pod] [flags]", calledAs),
 		Short:        "Attach a debug container to a running pod",
-		Example:      fmt.Sprintf(debugExample, "kubectl"),
+		Example:      fmt.Sprintf(debugExample, calledAs),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {
@@ -160,6 +159,10 @@ func (o *DebugOptions) Run() error {
 		pods := o.clientset.CoreV1().Pods(info.Namespace)
 		ec, err := pods.GetEphemeralContainers(info.Name, metav1.GetOptions{})
 		if err != nil {
+			// The pod has already been fetched at this point, so a NotFound error indicates the ephemeralcontainers subresource wasn't found.
+			if serr, ok := err.(*errors.StatusError); ok && serr.Status().Reason == metav1.StatusReasonNotFound {
+				return fmt.Errorf(errDisabled, err)
+			}
 			return err
 		}
 		klog.V(2).Infof("existing ephemeral containers: %v", ec.EphemeralContainers)
