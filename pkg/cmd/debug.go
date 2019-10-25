@@ -43,9 +43,13 @@ const (
 	# Create a debugging container in pod mypod using a custom debugging tools image and name.
 	%[1]s -m gcr.io/verb-images/debug-tools -c debug-tools mypod
 
-	# Note that %[1]s requires requires the EphemeralContainers feature to be enabled in the cluster.
-	# While this feature is in alpha it is not enabled by default.
-	# See https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/ for enabling features.
+	# Current Limitations of %[1]s:
+	# - %[1]s requires requires the EphemeralContainers feature to be enabled in the cluster.
+	#   This feature is in alpha it is not enabled by default. See
+	#   https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/ for
+	#   enabling features.
+	# - Container namespace targeting is not yet available. To view processes in other
+	#   containers shareProcessNamespace must be enabled for the target pod.
 `
 
 	errDisabled = "ephemeral containers are disabled for this cluster (\"%s\"). See --help for additional information."
